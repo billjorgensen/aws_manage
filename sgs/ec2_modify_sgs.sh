@@ -1,4 +1,4 @@
-#!/bin/bash #-x
+#!/bin/bash
 #
 # Title: ec2_modify_sgs.sh
 #
@@ -11,12 +11,14 @@
 # - AWS CLI installed
 # - appropriate AWS account IAM privileges to make changes to EC2 SGs
 # - Python 2.7.12 or 3.5.2
+# - SGs are assumed to have the same name in each region!
 #
 # Change record
 # 20170919-1123 - first pass that will update AWS SGs one at a time given the
 # information prompted for
 # 20170919-1351 - added ability to do the same rule in a different region with
 # a different cidr
+# 20170919-1542 - added ability to use EC2 SG ID
 #
 #############################################################
 # variables
@@ -26,49 +28,85 @@ export PATH=${PATH}:/usr/local/bin:/usr/local/admin/bin:/usr/local/sbin:/usr/loc
 function add_ingress {
    # ask for port range, cidr and protocol
    echo -n "
+   CIDR or SG ID (sg|cidr)? "
+   read Resp
+   if [ "X${Resp}" = "Xcidr" ]
+   then
+     echo -n "
+   CIDR: "
+     read Cidr
+   else
+     echo -n "
+   SG ID: "
+     read Ec2Sg
+   fi
+
+   echo -n "
    From_port: "
    read FromPort
+#
    echo -n "
    To_port: "
    read ToPort
-   echo -n "
-   CIDR block: "
-   read Cidr
+#
    echo -n "
    Protocol (tcp): "
    read Prot
+#
    echo -n "
    Does this need to be added in another region? (yes|no) "
    read Other
 
    # show existing...
    aws ec2 --region ${AwsReg} --output text describe-security-groups --group-ids ${SgId}
-   if [ ${FromPort} = ${ToPort} ]
+   if [ "X${Ec2Sg}" = "X" ]
    then
-      aws ec2 --region ${AwsReg} authorize-security-group-ingress --group-id ${SgId} --protocol ${Prot} --port ${FromPort} --cidr ${Cidr}
-    else
-      aws ec2 --region ${AwsReg} authorize-security-group-ingress --group-id ${SgId} --protocol ${Prot} --cidr ${Cidr} --port ${FromPort}-${ToPort}
-    fi
+     if [ ${FromPort} = ${ToPort} ]
+     then
+        aws ec2 --region ${AwsReg} authorize-security-group-ingress --group-id ${SgId} --protocol ${Prot} --port ${FromPort} --cidr ${Cidr}
+     else
+        aws ec2 --region ${AwsReg} authorize-security-group-ingress --group-id ${SgId} --protocol ${Prot} --port ${FromPort}-${ToPort} --cidr ${Cidr}
+     fi
+   else
+     if [ ${FromPort} = ${ToPort} ]
+     then
+        aws ec2 --region ${AwsReg} authorize-security-group-ingress --group-id ${SgId} --protocol ${Prot} --port ${FromPort} --source-group ${Ec2Sg}
+     else
+        aws ec2 --region ${AwsReg} authorize-security-group-ingress --group-id ${SgId} --protocol ${Prot} --port ${FromPort}-${ToPort} --source-group ${Ec2Sg}
+     fi
+   fi
    # show new...
    aws ec2 --region ${AwsReg} --output text describe-security-groups --group-ids ${SgId}
 
    # do work in the other region
-   if [ "${Other}" = "yes" ]
+   if [ "X${Other}" = "Xyes" ]
    then
      echo -n "
  What region? "
      read OtherReg
      OtherId=`aws ec2 --region ${OtherReg} --output text describe-security-groups --filters "Name=group-name,Values=${SgName}" --query 'SecurityGroups[].[GroupId]'`
      echo -n "
- What CIDR? "
+ What CIDR or SG ID? "
      read OtherCidr
-     if [ ${FromPort} = ${ToPort} ]
+     if [ "X${Ec2Sg}" = "X" ]
      then
-        aws ec2 --region ${OtherReg} authorize-security-group-ingress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort} --cidr ${OtherCidr}
-      else
-        aws ec2 --region ${OtherReg} authorize-security-group-ingress --group-id ${OtherId} --protocol ${Prot} --cidr ${OtherCidr} --port ${FromPort}-${ToPort}
-      fi
-    fi
+       if [ ${FromPort} = ${ToPort} ]
+       then
+          aws ec2 --region ${OtherReg} authorize-security-group-ingress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort} --cidr ${OtherCidr}
+        else
+          aws ec2 --region ${OtherReg} authorize-security-group-ingress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort}-${ToPort} --cidr ${OtherCidr}
+       fi
+     else
+       if [ ${FromPort} = ${ToPort} ]
+       then
+        aws ec2 --region ${OtherReg} authorize-security-group-ingress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort} --source-group ${OtherCidr}
+       else
+        aws ec2 --region ${OtherReg} authorize-security-group-ingress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort}-${ToPort} --source-group ${OtherCidr}
+       fi
+     fi
+   else
+     exit 0
+   fi
    # show new...
    aws ec2 --region ${OtherReg} --output text describe-security-groups --group-ids ${OtherId}
 }
@@ -77,49 +115,85 @@ function add_ingress {
 function add_egress {
    # ask for port range, cidr and protocol
    echo -n "
+   CIDR or SG ID (sg|cidr)? "
+   read Resp
+   if [ "X${Resp}" = "Xcidr" ]
+   then
+     echo -n "
+   CIDR: "
+     read Cidr
+   else
+     echo -n "
+   SG ID: "
+     read Ec2Sg
+   fi
+
+   echo -n "
    From_port: "
    read FromPort
+#
    echo -n "
    To_port: "
    read ToPort
-   echo -n "
-   CIDR block: "
-   read Cidr
+#
    echo -n "
    Protocol (tcp): "
    read Prot
+#
    echo -n "
    Does this need to be added in another region? (yes|no) "
    read Other
 
    # show existing...
    aws ec2 --region ${AwsReg} --output text describe-security-groups --group-ids ${SgId}
-   if [ ${FromPort} = ${ToPort} ]
+   if [ "X${Ec2Sg}" = "X" ]
    then
-      aws ec2 --region ${AwsReg} authorize-security-group-egress --group-id ${SgId} --protocol ${Prot} --port ${FromPort} --cidr ${Cidr}
-    else
-      aws ec2 --region ${AwsReg} authorize-security-group-egress --group-id ${SgId} --protocol ${Prot} --cidr ${Cidr} --port ${FromPort}-${ToPort}
-    fi
+     if [ ${FromPort} = ${ToPort} ]
+     then
+        aws ec2 --region ${AwsReg} authorize-security-group-egress --group-id ${SgId} --protocol ${Prot} --port ${FromPort} --cidr ${Cidr}
+     else
+        aws ec2 --region ${AwsReg} authorize-security-group-egress --group-id ${SgId} --protocol ${Prot} --port ${FromPort}-${ToPort} --cidr ${Cidr}
+     fi
+   else
+     if [ ${FromPort} = ${ToPort} ]
+     then
+        aws ec2 --region ${AwsReg} authorize-security-group-egress --group-id ${SgId} --protocol ${Prot} --port ${FromPort} --source-group ${Ec2Sg}
+     else
+        aws ec2 --region ${AwsReg} authorize-security-group-egress --group-id ${SgId} --protocol ${Prot} --port ${FromPort}-${ToPort} --source-group ${Ec2Sg}
+     fi
+   fi
    # show new...
    aws ec2 --region ${AwsReg} --output text describe-security-groups --group-ids ${SgId}
 
-   # do work in the other region...
-   if [ "${Other}" = "yes" ]
+   # do work in the other region
+   if [ "X${Other}" = "Xyes" ]
    then
      echo -n "
  What region? "
      read OtherReg
      OtherId=`aws ec2 --region ${OtherReg} --output text describe-security-groups --filters "Name=group-name,Values=${SgName}" --query 'SecurityGroups[].[GroupId]'`
      echo -n "
- What CIDR? "
+ What CIDR or SG ID? "
      read OtherCidr
-     if [ ${FromPort} = ${ToPort} ]
+     if [ "X${Ec2Sg}" = "X" ]
      then
-        aws ec2 --region ${OtherReg} authorize-security-group-egress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort} --cidr ${OtherCidr}
-      else
-        aws ec2 --region ${OtherReg} authorize-security-group-egress --group-id ${OtherId} --protocol ${Prot} --cidr ${OtherCidr} --port ${FromPort}-${ToPort}
-      fi
-    fi
+       if [ ${FromPort} = ${ToPort} ]
+       then
+          aws ec2 --region ${OtherReg} authorize-security-group-egress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort} --cidr ${OtherCidr}
+        else
+          aws ec2 --region ${OtherReg} authorize-security-group-egress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort}-${ToPort} --cidr ${OtherCidr}
+       fi
+     else
+       if [ ${FromPort} = ${ToPort} ]
+       then
+        aws ec2 --region ${OtherReg} authorize-security-group-egress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort} --source-group ${OtherCidr}
+       else
+        aws ec2 --region ${OtherReg} authorize-security-group-egress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort}-${ToPort} --source-group ${OtherCidr}
+       fi
+     fi
+   else
+     exit 0
+   fi
    # show new...
    aws ec2 --region ${OtherReg} --output text describe-security-groups --group-ids ${OtherId}
 }
@@ -128,49 +202,85 @@ function add_egress {
 function revoke_ingress {
    # ask for port range, cidr and protocol
    echo -n "
+   CIDR or SG ID (sg|cidr)? "
+   read Resp
+   if [ "X${Resp}" = "Xcidr" ]
+   then
+     echo -n "
+   CIDR: "
+     read Cidr
+   else
+     echo -n "
+   SG ID: "
+     read Ec2Sg
+   fi
+
+   echo -n "
    From_port: "
    read FromPort
+#
    echo -n "
    To_port: "
    read ToPort
-   echo -n "
-   CIDR block: "
-   read Cidr
+#
    echo -n "
    Protocol (tcp): "
    read Prot
+#
    echo -n "
    Does this need to be added in another region? (yes|no) "
    read Other
 
    # show existing...
    aws ec2 --region ${AwsReg} --output text describe-security-groups --group-ids ${SgId}
-   if [ ${FromPort} = ${ToPort} ]
+   if [ "X${Ec2Sg}" = "X" ]
    then
-      aws ec2 --region ${AwsReg} revoke-security-group-ingress --group-id ${SgId} --protocol ${Prot} --port ${FromPort} --cidr ${Cidr}
-    else
-      aws ec2 --region ${AwsReg} revoke-security-group-ingress --group-id ${SgId} --protocol ${Prot} --cidr ${Cidr} --port ${FromPort}-${ToPort}
-    fi
+     if [ ${FromPort} = ${ToPort} ]
+     then
+        aws ec2 --region ${AwsReg} revoke-security-group-ingress --group-id ${SgId} --protocol ${Prot} --port ${FromPort} --cidr ${Cidr}
+     else
+        aws ec2 --region ${AwsReg} revoke-security-group-ingress --group-id ${SgId} --protocol ${Prot} --port ${FromPort}-${ToPort} --cidr ${Cidr}
+     fi
+   else
+     if [ ${FromPort} = ${ToPort} ]
+     then
+        aws ec2 --region ${AwsReg} revoke-security-group-ingress --group-id ${SgId} --protocol ${Prot} --port ${FromPort} --source-group ${Ec2Sg}
+     else
+        aws ec2 --region ${AwsReg} revoke-security-group-ingress --group-id ${SgId} --protocol ${Prot} --port ${FromPort}-${ToPort} --source-group ${Ec2Sg}
+     fi
+   fi
    # show new...
    aws ec2 --region ${AwsReg} --output text describe-security-groups --group-ids ${SgId}
 
-   # do work in the other region...
-   if [ "${Other}" = "yes" ]
+   # do work in the other region
+   if [ "X${Other}" = "Xyes" ]
    then
      echo -n "
  What region? "
      read OtherReg
      OtherId=`aws ec2 --region ${OtherReg} --output text describe-security-groups --filters "Name=group-name,Values=${SgName}" --query 'SecurityGroups[].[GroupId]'`
      echo -n "
- What CIDR? "
+ What CIDR or SG ID? "
      read OtherCidr
-     if [ ${FromPort} = ${ToPort} ]
-     then
-        aws ec2 --region ${OtherReg} revoke-security-group-ingress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort} --cidr ${OtherCidr}
+    if [ "X${Ec2Sg}" = "X" ]
+    then
+      if [ ${FromPort} = ${ToPort} ]
+      then
+          aws ec2 --region ${OtherReg} revoke-security-group-ingress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort} --cidr ${OtherCidr}
       else
-        aws ec2 --region ${OtherReg} revoke-security-group-ingress --group-id ${OtherId} --protocol ${Prot} --cidr ${OtherCidr} --port ${FromPort}-${ToPort}
+          aws ec2 --region ${OtherReg} revoke-security-group-ingress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort}-${ToPort} --cidr ${OtherCidr}
+      fi
+    else
+      if [ ${FromPort} = ${ToPort} ]
+      then
+        aws ec2 --region ${OtherReg} revoke-security-group-ingress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort} --source-group ${OtherCidr}
+      else
+        aws ec2 --region ${OtherReg} revoke-security-group-ingress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort}-${ToPort} --source-group ${OtherCidr}
       fi
     fi
+  else
+    exit 0
+  fi
    # show new...
    aws ec2 --region ${OtherReg} --output text describe-security-groups --group-ids ${OtherId}
 }
@@ -179,49 +289,85 @@ function revoke_ingress {
 function revoke_egress {
    # ask for port range, cidr and protocol
    echo -n "
+   CIDR or SG ID (sg|cidr)? "
+   read Resp
+   if [ "X${Resp}" = "Xcidr" ]
+   then
+     echo -n "
+  CIDR: "
+     read Cidr
+   else
+     echo -n "
+  SG ID: "
+     read Ec2Sg
+   fi
+
+   echo -n "
    From_port: "
    read FromPort
+#
    echo -n "
    To_port: "
    read ToPort
-   echo -n "
-   CIDR block: "
-   read Cidr
+#
    echo -n "
    Protocol (tcp): "
    read Prot
+#
    echo -n "
    Does this need to be added in another region? (yes|no) "
    read Other
 
    # show existing...
    aws ec2 --region ${AwsReg} --output text describe-security-groups --group-ids ${SgId}
-   if [ ${FromPort} = ${ToPort} ]
+   if [ "X${Ec2Sg}" = "X" ]
    then
-      aws ec2 --region ${AwsReg} revoke-security-group-egress --group-id ${SgId} --protocol ${Prot} --port ${FromPort} --cidr ${Cidr}
+     if [ ${FromPort} = ${ToPort} ]
+     then
+        aws ec2 --region ${AwsReg} revoke-security-group-egress --group-id ${SgId} --protocol ${Prot} --port ${FromPort} --cidr ${Cidr}
+     else
+        aws ec2 --region ${AwsReg} revoke-security-group-egress --group-id ${SgId} --protocol ${Prot} --port ${FromPort}-${ToPort} --cidr ${Cidr}
+     fi
     else
-      aws ec2 --region ${AwsReg} revoke-security-group-egress --group-id ${SgId} --protocol ${Prot} --cidr ${Cidr} --port ${FromPort}-${ToPort}
-    fi
+     if [ ${FromPort} = ${ToPort} ]
+     then
+        aws ec2 --region ${AwsReg} revoke-security-group-egress --group-id ${SgId} --protocol ${Prot} --port ${FromPort} --source-group ${Ec2Sg}
+     else
+        aws ec2 --region ${AwsReg} revoke-security-group-egress --group-id ${SgId} --protocol ${Prot} --port ${FromPort}-${ToPort} --source-group ${Ec2Sg}
+     fi
+   fi
    # show new...
    aws ec2 --region ${AwsReg} --output text describe-security-groups --group-ids ${SgId}
 
-   # do work in the other region...
-   if [ "${Other}" = "yes" ]
+   # do work in the other region
+   if [ "X${Other}" = "Xyes" ]
    then
      echo -n "
  What region? "
      read OtherReg
      OtherId=`aws ec2 --region ${OtherReg} --output text describe-security-groups --filters "Name=group-name,Values=${SgName}" --query 'SecurityGroups[].[GroupId]'`
      echo -n "
- What CIDR? "
+ What CIDR or SG ID? "
      read OtherCidr
-     if [ ${FromPort} = ${ToPort} ]
+     if [ "X${Ec2Sg}" = "X" ]
      then
-        aws ec2 --region ${OtherReg} revoke-security-group-egress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort} --cidr ${OtherCidr}
-      else
-        aws ec2 --region ${OtherReg} revoke-security-group-egress --group-id ${OtherId} --protocol ${Prot} --cidr ${OtherCidr} --port ${FromPort}-${ToPort}
-      fi
-    fi
+       if [ ${FromPort} = ${ToPort} ]
+       then
+          aws ec2 --region ${OtherReg} revoke-security-group-egress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort} --cidr ${OtherCidr}
+        else
+          aws ec2 --region ${OtherReg} revoke-security-group-egress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort}-${ToPort} --cidr ${OtherCidr}
+       fi
+     else
+       if [ ${FromPort} = ${ToPort} ]
+       then
+         aws ec2 --region ${OtherReg} revoke-security-group-egress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort} --source-group ${OtherCidr}
+       else
+         aws ec2 --region ${OtherReg} revoke-security-group-egress --group-id ${OtherId} --protocol ${Prot} --port ${FromPort}-${ToPort} --source-group ${OtherCidr}
+       fi
+     fi
+   else
+     exit 0
+   fi
    # show new...
    aws ec2 --region ${OtherReg} --output text describe-security-groups --group-ids ${OtherId}
 }
