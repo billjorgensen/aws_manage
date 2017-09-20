@@ -28,7 +28,7 @@ export PATH=${PATH}:/usr/local/bin:/usr/local/admin/bin:/usr/local/sbin:/usr/loc
 function add_ingress {
    # ask for port range, cidr and protocol
    echo -n "
-   CIDR or SG ID (sg|cidr)? "
+   CIDR or SG ID (sg | cidr)? "
    read Resp
    if [ "X${Resp}" = "Xcidr" ]
    then
@@ -44,17 +44,17 @@ function add_ingress {
    echo -n "
    From_port: "
    read FromPort
-#
+
    echo -n "
    To_port: "
    read ToPort
-#
+
    echo -n "
    Protocol (tcp): "
    read Prot
-#
+
    echo -n "
-   Does this need to be added in another region? (yes|no) "
+   Does this need to be added in another region? (yes | no) "
    read Other
 
    # show existing...
@@ -115,7 +115,7 @@ function add_ingress {
 function add_egress {
    # ask for port range, cidr and protocol
    echo -n "
-   CIDR or SG ID (sg|cidr)? "
+   CIDR or SG ID (sg | cidr)? "
    read Resp
    if [ "X${Resp}" = "Xcidr" ]
    then
@@ -131,17 +131,17 @@ function add_egress {
    echo -n "
    From_port: "
    read FromPort
-#
+
    echo -n "
    To_port: "
    read ToPort
-#
+
    echo -n "
    Protocol (tcp): "
    read Prot
-#
+
    echo -n "
-   Does this need to be added in another region? (yes|no) "
+   Does this need to be added in another region? (yes | no) "
    read Other
 
    # show existing...
@@ -202,7 +202,7 @@ function add_egress {
 function revoke_ingress {
    # ask for port range, cidr and protocol
    echo -n "
-   CIDR or SG ID (sg|cidr)? "
+   CIDR or SG ID (sg | cidr)? "
    read Resp
    if [ "X${Resp}" = "Xcidr" ]
    then
@@ -218,17 +218,17 @@ function revoke_ingress {
    echo -n "
    From_port: "
    read FromPort
-#
+
    echo -n "
    To_port: "
    read ToPort
-#
+
    echo -n "
    Protocol (tcp): "
    read Prot
-#
+
    echo -n "
-   Does this need to be added in another region? (yes|no) "
+   Does this need to be added in another region? (yes | no) "
    read Other
 
    # show existing...
@@ -289,7 +289,7 @@ function revoke_ingress {
 function revoke_egress {
    # ask for port range, cidr and protocol
    echo -n "
-   CIDR or SG ID (sg|cidr)? "
+   CIDR or SG ID (sg | cidr)? "
    read Resp
    if [ "X${Resp}" = "Xcidr" ]
    then
@@ -305,17 +305,17 @@ function revoke_egress {
    echo -n "
    From_port: "
    read FromPort
-#
+
    echo -n "
    To_port: "
    read ToPort
-#
+
    echo -n "
    Protocol (tcp): "
    read Prot
-#
+
    echo -n "
-   Does this need to be added in another region? (yes|no) "
+   Does this need to be added in another region? (yes | no) "
    read Other
 
    # show existing...
