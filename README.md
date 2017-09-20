@@ -3,7 +3,7 @@
 ```
 Usage: ec2_modify_sgs.sh
 
-~/xome/aws/manage/aws_manage/sgs -> ./ec2_modify_sgs.sh
+~/aws/manage/aws_manage/sgs -> ./ec2_modify_sgs.sh
 
    What needs to be done?
       1. Add ingress
