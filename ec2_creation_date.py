@@ -1,4 +1,4 @@
-#!/Users/wjorgensen/.pyenv/shims/python
+#!/Users/xxxxxxxxx/.pyenv/shims/python
 #
 # Title: ec2_create_date.py
 #
