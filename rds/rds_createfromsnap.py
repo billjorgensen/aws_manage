@@ -1,0 +1,356 @@
+#!/usr/bin/env python3
+#
+# Title: rds_createdbfromsnap.py
+#
+# Description: rds_createdbfromsnap.py uses the aws module, boto3, to make
+# api calls to create a snapshot of a db identifier (rds db has to exist)
+# and then use that snap to create an RDS instance
+#
+# Usage: rds_createfromsnap.py [create|delete]
+#
+# Requirements
+# - proper aws iam privs to do the work
+# - python 3.7.x
+# - pip installed
+# - boto3 installed
+#
+################################################################################
+# imports...
+################################################################################
+import boto3
+import time
+import argparse
+import yaml
+import smtplib
+from datetime import datetime, timezone, timedelta, date
+import os
+import sys
+################################################################################
+
+# functions...
+################################################################################
+
+
+def get_session(region):
+    return boto3.session.Session(region_name=region)
+
+
+def create_snap():
+    # connect to rds
+    #rdsclient = boto3.client('rds')
+
+    # create the snapshot of the db id...
+    rdsresponse = rdsclient.create_db_snapshot(
+        DBSnapshotIdentifier=params['DBSnapshotIdentifier'],
+        DBInstanceIdentifier=params['DBInstanceIdentifier'],
+        Tags=[
+            {
+                'Key': 'Environment',
+                'Value': 'PROD'
+            },
+            {
+                'Key': 'Stack',
+                'Value': 'Shared'
+            },
+        ]
+    )
+    dbsnap = rdsresponse['DBSnapshot']
+    snapstatus = dbsnap['Status']
+    snaparn = dbsnap['DBSnapshotArn']
+    while snapstatus != "available":
+        snapresponse = rdsclient.describe_db_snapshots(
+            DBInstanceIdentifier=params['DBInstanceIdentifier'],
+            DBSnapshotIdentifier=params['DBSnapshotIdentifier'],
+            SnapshotType='manual'
+        )
+        snapstatus = snapresponse['DBSnapshots'][0]['Status']
+        if snapstatus != "available":
+            time.sleep(30)
+            print("Creating...")
+    else:
+        print("Snapshot ready")
+
+    return snaparn
+
+
+def template_validate():
+    # connect to cloudformation
+    #cfclient = boto3.client('cloudformation')
+    with open(params['TemplateName'], 'r', encoding='utf8') as template:
+        # validate the template
+        cfresponse = cfclient.validate_template(
+            TemplateBody=template.read()
+        )
+        try:
+            iamcapabilities = cfresponse['Capabilities'][0]
+        except KeyError as error:
+            iamcapabilities = 'None'
+
+        return iamcapabilities
+
+
+def stack_create():
+    # new cloudformation connection...
+    #cfclient = boto3.client('cloudformation')
+    if iamcapabilities != "None":
+        with open(params['TemplateName'], 'r', encoding='utf8') as template:
+            # create the stack and deploy...
+            cfresponse = cfclient.create_stack(
+                StackName=params['StackName'],
+                TemplateBody=template.read(),
+                Capabilities=[
+                    iamcapabilities
+                ],
+                OnFailure='ROLLBACK',
+                Parameters=[
+                    {
+                        'ParameterKey': 'StackName',
+                        'ParameterValue': params['StackName']
+                    },
+                    {
+                        'ParameterKey': 'VpcId',
+                        'ParameterValue': params['VpcId']
+                    },
+                    {
+                        'ParameterKey': 'RdsKey',
+                        'ParameterValue': params['RdsKey']
+                    },
+                    {
+                        'ParameterKey': 'Environment',
+                        'ParameterValue': params['Environment']
+                    },
+                    {
+                        'ParameterKey': 'SubnetGroupName',
+                        'ParameterValue': params['SubnetGroupName']
+                    },
+                    {
+                        'ParameterKey': 'DatabaseInstanceName',
+                        'ParameterValue': params['DatabaseInstanceName']
+                    },
+                    {
+                        'ParameterKey': 'SecurityGroupId',
+                        'ParameterValue': params['SecurityGroupId']
+                    },
+                    {
+                        'ParameterKey': 'DBParameterGroupName',
+                        'ParameterValue': params['DBParameterGroupName']
+                    },
+                    {
+                        'ParameterKey': 'DBOptionsGroupName',
+                        'ParameterValue': params['DBOptionsGroupName']
+                    },
+                    {
+                        'ParameterKey': 'InstanceClass',
+                        'ParameterValue': params['InstanceClass']
+                    },
+                    {
+                        'ParameterKey': 'SnapshotArn',
+                        'ParameterValue': snaparn
+                    },
+                    {
+                        'ParameterKey': 'isMultiAZ',
+                        'ParameterValue': params['isMultiAZ']
+                    },
+                    {
+                        'ParameterKey': 'DBStorageType',
+                        'ParameterValue': params['DBStorageType']
+                    }
+                ]
+            )
+    else:
+        with open(params['TemplateName'], 'r', encoding='utf8') as template:
+            # create the stack and deploy...
+            cfresponse = cfclient.create_stack(
+                StackName=params['StackName'],
+                TemplateBody=template.read(),
+                OnFailure='ROLLBACK',
+                Parameters=[
+                    {
+                        'ParameterKey': 'StackName',
+                        'ParameterValue': params['StackName']
+                    },
+                    {
+                        'ParameterKey': 'VpcId',
+                        'ParameterValue': params['VpcId']
+                    },
+                    {
+                        'ParameterKey': 'RdsKey',
+                        'ParameterValue': params['RdsKey']
+                    },
+                    {
+                        'ParameterKey': 'Environment',
+                        'ParameterValue': params['Environment']
+                    },
+                    {
+                        'ParameterKey': 'SubnetGroupName',
+                        'ParameterValue': params['SubnetGroupName']
+                    },
+                    {
+                        'ParameterKey': 'DatabaseInstanceName',
+                        'ParameterValue': params['DatabaseInstanceName']
+                    },
+                    {
+                        'ParameterKey': 'SecurityGroupId',
+                        'ParameterValue': params['SecurityGroupId']
+                    },
+                    {
+                        'ParameterKey': 'DBParameterGroupName',
+                        'ParameterValue': params['DBParameterGroupName']
+                    },
+                    {
+                        'ParameterKey': 'DBOptionsGroupName',
+                        'ParameterValue': params['DBOptionsGroupName']
+                    },
+                    {
+                        'ParameterKey': 'InstanceClass',
+                        'ParameterValue': params['InstanceClass']
+                    },
+                    {
+                        'ParameterKey': 'SnapshotArn',
+                        'ParameterValue': snaparn
+                    },
+                    {
+                        'ParameterKey': 'isMultiAZ',
+                        'ParameterValue': params['isMultiAZ']
+                    },
+                    {
+                        'ParameterKey': 'DBStorageType',
+                        'ParameterValue': params['DBStorageType']
+                    }
+                ]
+            )
+
+
+def stack_status():
+    # how's the deployment going?
+    #cfclient = boto3.client('cloudformation')
+    stackstatus = 'IN_PROGRESS'
+    while stackstatus != 'CREATE_COMPLETE':
+        cfresponse = cfclient.describe_stacks(
+            StackName=params['StackName']
+        )
+        stackstatus = cfresponse['Stacks'][0]['StackStatus']
+        # print(stackstatus)
+        time.sleep(30)
+        print(stackstatus)
+    else:
+        print("Clone ready...")
+
+
+def dbinstance_endpoint():
+    # get the clone's endpoint to mail out...
+    #rdsclient = boto3.client('rds')
+    rdsresponse = rdsclient.describe_db_instances(
+        DBInstanceIdentifier=params['DatabaseInstanceName']
+    )
+    endpoint = rdsresponse['DBInstances'][0]['Endpoint']['Address']
+    return endpoint
+
+
+def dbinstance_addsgs():
+    # add ec2 security groups to the clone...
+    #rdsclient = boto3.client('rds')
+    rdsresponse = rdsclient.modify_db_instance(
+        DBInstanceIdentifier=params['DatabaseInstanceName'],
+        VpcSecurityGroupIds=['sg-f0158989', 'sg-237bc952', 'sg-60f6b319', 'sg-06ada62665764ef78']
+    )
+
+
+def delete_stack():
+    # connect to cloudformation and delete the stack...
+    stackstatus = 'CREATE_COMPLETE'
+    #cfclient = boto3.client('cloudformation')
+    cfresponse = cfclient.delete_stack(
+        StackName=params['StackName']
+    )
+    while stackstatus != 'Deleted':
+        try:
+            cfresponse = cfclient.describe_stacks(StackName=params['StackName'])
+            stackstatus = cfresponse['Stacks'][0]['StackStatus']
+        except cfclient.exceptions.ClientError as error:
+            stackstatus = 'Deleted'
+
+        if stackstatus != 'Deleted':
+            time.sleep(30)
+    else:
+        print(params['StackName'] + " deleted")
+
+
+def delete_snap():
+    # delete the snap used in the manifest...
+    #rdsclient = boto3.client('rds')
+    rdsresponse = rdsclient.delete_db_snapshot(
+        DBSnapshotIdentifier=params['DBSnapshotIdentifier'],
+    )
+
+
+def mail_response():
+    text = dbinstance_endpoint() + ' is available for use'
+    subject = 'ssawssql-clone created'
+    smtp = smtplib.SMTP('somecompany-com.mail.protection.outlook.com', 25)
+    sender = 'noreply@c7n02.somedomain.com'
+    receiver = ['xxxxxxxxxx@somecompany.com', 'emirth@somecompany.com', 'sisanka@somecompany.com',
+                'bhoffman@somecompany.com', 'dlaney@somecompany.com', 'tgillogly@somecompany.com', 'bheierle@somecompany.com']
+    #receiver = ['xxxxxxxxxx@somecompany.com']
+
+    message = 'Subject: {}\n\n{}'.format(subject, text)
+    try:
+        smtp.sendmail(sender, receiver, message)
+        print("Email sent")
+        smtp.quit()
+    except smtplib.ConnectionRefusedError as e:
+        print("Failed to connect to email server")
+
+
+def mail_stack():
+    text = params['StackName'] + ' has been deleted'
+    subject = 'stack deleted'
+    smtp = smtplib.SMTP('somecompany-com.mail.protection.outlook.com', 25)
+    sender = 'noreply@c7n02.somedomain.biz'
+    receiver = 'xxxxxxxxxx@somecompany.com'
+    message = 'Subject: {}\n\n{}'.format(subject, text)
+    try:
+        smtp.sendmail(sender, receiver, message)
+        print("Email sent")
+        smtp.quit()
+    except smtplib.ConnectionRefusedError as e:
+        print("Failed to connect to email server")
+
+################################################################################
+
+
+# main portion...
+################################################################################
+# parse the command line...
+parser = argparse.ArgumentParser(
+    description='Script to create or delete an RDS DB from a DB snapshot')
+parser.add_argument('command', help='create or delete', action='store', default='create')
+args = parser.parse_args()
+
+# connect to aws, rds as client...
+rdsclient = boto3.client('rds')
+
+# connect to aws, cloudformation as client...
+cfclient = boto3.client('cloudformation')
+
+# load yaml manifest to assign parameters...
+# with open('test.manifest.yml') as manifest:
+with open('/home/ec2-user/databases/clone-manifest.yml') as manifest:
+    params = yaml.load(manifest, Loader=yaml.FullLoader)
+
+# decision time...
+if args.command == 'create':
+    region = params['AwsRegion']
+    output = params['AwsOutPut']
+    snaparn = create_snap()
+    iamcapabilities = template_validate()
+    stack_create()
+    stack_status()
+    dbinstance_addsgs()
+    mail_response()
+else:
+    region = params['AwsRegion']
+    output = params['AwsOutPut']
+    delete_stack()
+    delete_snap()
+    mail_stack()

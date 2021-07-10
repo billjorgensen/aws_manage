@@ -1,11 +1,11 @@
-#!/Users/xxxxxxxxx/.pyenv/shims/python
+#!/Users/xxxxxxxxxx/.pyenv/shims/python
 #
-# Title: rds_create_date.py
+# Title: rds_getcreation_date.py
 #
-# Description: rds_create_date.py uses aws's boto3 to make api calls to aws
+# Description: rds_getcreation_date.py uses aws's boto3 to make api calls to aws
 # for the service's information. It gathers the creation time attribute.
 #
-# Usage: rds_create_date.py
+# Usage: rds_getcreation_date.py
 #
 # Requirements:
 # - aws credentials properly exported as environment variables
@@ -23,14 +23,23 @@
 import boto3
 from datetime import datetime, timezone, timedelta
 import csv
+import argparse
+
+# parse the command line for account alias...
+parser = argparse.ArgumentParser(
+    description='Script to get RDS instances created after a date. Jan 2019 is coded in')
+parser.add_argument('Account', help='AWS account alias: prod, nonprod, and sandbox',
+                    action="store", default='prod')
+args = parser.parse_args()
+account = args.Account
 
 client = boto3.client('rds')
 response = client.describe_db_instances()
 
 rds_instances_after_jan2019 = []
-with open('rds_instances_after_jan2019.csv', mode='w') as csv_file:
+with open(account + '_rds_instances_after_jan2019.csv', mode='w') as csv_file:
     fieldnames = ['DBInstanceId', 'CreationTime', 'DBInstanceClass']
-    writer =csv.DictWriter(csv_file, fieldnames=fieldnames)
+    writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
     writer.writeheader()
     for dbinstances in response['DBInstances']:
         dbidentifier = dbinstances['DBInstanceIdentifier']
@@ -39,7 +48,8 @@ with open('rds_instances_after_jan2019.csv', mode='w') as csv_file:
         startdate = datetime(2019, 1, 1, tzinfo=timezone.utc)
         if creation > startdate:
             afterjan2019 = dbidentifier + ',' + str(creation) + ',' + dbinstanceclass
-            writer.writerow({'DBInstanceId': dbidentifier, 'CreationTime': creation, 'DBInstanceClass': dbinstanceclass})
+            writer.writerow({'DBInstanceId': dbidentifier, 'CreationTime': creation,
+                            'DBInstanceClass': dbinstanceclass})
             rds_instances_after_jan2019.append(afterjan2019)
 
 print(rds_instances_after_jan2019)

@@ -1,0 +1,94 @@
+#!/Users/xxxxxxxxxx/.pyenv/shims/python
+#
+# Title: rds_createdafter_date.py
+#
+# Description: rds_getcreation_date.py uses aws's boto3 to make api calls to aws
+# for the service's information. It gathers the creation time attribute.
+#
+# Usage: rds_createdafter_date.py [-h|<account_alias>]
+#
+# Requirements:
+# - aws credentials properly exported as environment variables
+#   Here are the variables needed to export as environment variables:
+#     AWS_DEFAULT_REGION=us-east-1
+#     AWS_DEFAULT_OUTPUT=json
+#     AWS_ACCESS_KEY_ID=xxxxxxxxxxxxxxxxxxxx
+#     AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+#     AWS_SESSION_TOKEN=very long char string
+# - python 3.7.* installed and used. Notice the magic number references a
+#   pyenv shims path not a general python path. The version used initially
+#   is 3.7.2
+#
+##########################################################################
+import boto3
+from datetime import datetime, timezone, timedelta
+import csv
+import argparse
+
+# parse the command line for account alias...
+parser = argparse.ArgumentParser(
+    description='Script to get RDS instances created after a date. Jan 2019 is coded in')
+parser.add_argument('Account', help='AWS account alias: prod, nonprod, and sandbox',
+                    action="store", default='prod')
+args = parser.parse_args()
+account = args.Account
+
+envkey = 'Environment'
+namekey = 'Name'
+stackkey = 'Stack'
+stackvalue = ''
+envvalue = ''
+
+rdsclient = boto3.client('rds')
+rdsresponse = rdsclient.describe_db_instances()
+
+rds_instance_info = []
+with open(account + '_rds_instances_.csv', mode='w') as csv_file:
+    fieldnames = ['Account', 'DBInstanceIdentifier', 'DBInstanceClass',
+                  'Engine', 'DBInstanceId', 'Environment', 'Stack', 'AZ']
+    writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+    writer.writeheader()
+    for dbinstances in rdsresponse['DBInstances']:
+        dbidentifier = dbinstances['DBInstanceIdentifier']
+        dbinstanceclass = dbinstances['DBInstanceClass']
+        dbengine = dbinstances['Engine']
+        azone = dbinstances['AvailabilityZone']
+        # creation = dbinstances['InstanceCreateTime']
+        # startdate = datetime(2019, 5, 1, tzinfo=timezone.utc)
+        # if creation > startdate:
+        rdsresponse = rdsclient.describe_db_instances(DBInstanceIdentifier=dbidentifier)
+        rdsarn = rdsresponse['DBInstances'][0]['DBInstanceArn']
+        rdstags = rdsclient.list_tags_for_resource(ResourceName=rdsarn)
+        for key in rdstags['TagList']:
+            if key['Key'] == 'Stack':
+                stackvalue = key['Value'] or 'NoValue'
+            if key['Key'] == 'Environment':
+                envvalue = key['Value'] or 'NoValue'
+        rdsinstance = dbidentifier + ',' + dbinstanceclass
+        writer.writerow({'Account': account, 'DBInstanceIdentifier': dbidentifier, 'DBInstanceClass': dbinstanceclass,
+                        'Engine': dbengine, 'DBInstanceId': dbidentifier, 'Environment': envvalue, 'Stack': stackvalue, 'AZ': azone})
+        rds_instance_info.append(rdsinstance)
+
+rdsresponse = rdsclient.describe_db_clusters()
+with open(account + '_rds_clusters.csv', mode='w') as csv_file:
+    fieldnames = ['Account', 'DBClusterIdentifier', 'EngineMode', 'Environment', 'Stack']
+    writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+    writer.writeheader()
+    for dbclusters in rdsresponse['DBClusters']:
+        dbidentifier = dbclusters['DBClusterIdentifier']
+        dbenginemode = dbclusters['EngineMode']
+        rdsarn = dbclusters['DBClusterArn']
+        # creation = dbclusters['ClusterCreateTime']
+        # startdate = datetime(2019, 5, 1, tzinfo=timezone.utc)
+        # if creation > startdate:
+        rdstags = rdsclient.list_tags_for_resource(ResourceName=rdsarn)
+        for key in rdstags['TagList']:
+            if key['Key'] == 'Stack':
+                stackvalue = key['Value'] or 'NoValue'
+            if key['Key'] == 'Environment':
+                envvalue = key['Value'] or 'NoValue'
+        rdscluster = dbidentifier + ',' + dbinstanceclass
+        writer.writerow({'Account': account, 'DBClusterIdentifier': dbidentifier,
+                        'EngineMode': dbenginemode, 'Environment': envvalue, 'Stack': stackvalue})
+        rds_instance_info.append(rdscluster)
+print(rds_instance_info)
