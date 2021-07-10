@@ -66,7 +66,7 @@ rdsclient = boto3.client('rds')
 
 # load yaml manifest to assign parameters...
 # with open('test.manifest.yml') as manifest:
-with open('/Users/wjorgensen/samba/code/python/aws/rds/changesgs-manifest.yml') as manifest:
+with open('/Users/xxxxxxxxxx/samba/code/python/aws/rds/changesgs-manifest.yml') as manifest:
     params = yaml.load(manifest, Loader=yaml.FullLoader)
 
 # decision time...
