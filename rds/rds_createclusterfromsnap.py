@@ -306,7 +306,7 @@ def delete_snap():
 
 def mail_response():
     text = dbinstance_endpoint() + ', is available for use'
-    subject = 'ssawssql-clone created'
+    subject = 'clone created'
     smtp = smtplib.SMTP('dig MX somecompany.com', 25)
     sender = 'ec2-user@c7n02.somedomain.biz'
     receiver = ['someperson@somecompany.com',
@@ -324,7 +324,7 @@ def mail_stack():
     text = params['StackName'] + ' has been deleted'
     subject = 'stack deleted'
     smtp = smtplib.SMTP('dig MX somecompany.com', 25)
-    sender = 'root@ssawsnv-c7n02.saprod.biz'
+    sender = 'root@ssawsnv-c7n02.somedomain.biz'
     receiver = 'someperson@somecompany.com'
     message = 'Subject: {}\n\n{}'.format(subject, text)
     try:
