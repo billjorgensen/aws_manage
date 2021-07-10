@@ -252,7 +252,7 @@ def dbinstance_addsgs():
     #rdsclient = boto3.client('rds')
     rdsresponse = rdsclient.modify_db_instance(
         DBInstanceIdentifier=params['DatabaseInstanceName'],
-        VpcSecurityGroupIds=['sg-f0158989', 'sg-237bc952', 'sg-60f6b319', 'sg-06ada62665764ef78']
+        VpcSecurityGroupIds=['sg-xxxxxxxx', 'sg-xxxxxxxx', 'sg-xxxxxxxx', 'sg-xxxxxxxxxxxxxxxxx']
     )
 
 
