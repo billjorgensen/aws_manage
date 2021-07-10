@@ -289,8 +289,8 @@ def mail_response():
     subject = 'ssawssql-clone created'
     smtp = smtplib.SMTP('somecompany-com.mail.protection.outlook.com', 25)
     sender = 'noreply@c7n02.somedomain.com'
-    receiver = ['xxxxxxxxxx@somecompany.com', 'emirth@somecompany.com', 'sisanka@somecompany.com',
-                'bhoffman@somecompany.com', 'dlaney@somecompany.com', 'tgillogly@somecompany.com', 'bheierle@somecompany.com']
+    receiver = ['xxxxxxxxxx@somecompany.com',
+                'xxxxxxxxxx@somecompany.com', 'xxxxxxxxxx@somecompany.com']
     #receiver = ['xxxxxxxxxx@somecompany.com']
 
     message = 'Subject: {}\n\n{}'.format(subject, text)
