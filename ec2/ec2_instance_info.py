@@ -10,8 +10,8 @@ from datetime import datetime, timezone, timedelta
 # # parse the command line for positional arguments...
 parser = argparse.ArgumentParser(
     description='Script to get Instance IDs with specific cost allocation tags')
-parser.add_argument('Account', help='AWS account alias: samba, tech, sandbox, etc',
-                    action="store", default='samba')
+parser.add_argument('Account', help='AWS account alias: xxxxx, tech, sandbox, etc',
+                    action="store", default='xxxxx')
 args = parser.parse_args()
 account = args.Account
 envkey = 'Environment'

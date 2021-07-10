@@ -346,7 +346,7 @@ args = parser.parse_args()
 
 # load yaml manifest to assign parameters...
 # with open('test.manifest.yml') as manifest:
-with open('/Users/xxxxxxxxxx/samba/code/python/aws/rds/prod-migrate-manifest.yml') as manifest:
+with open('/Users/xxxxxxxxxx/xxxxx/code/python/aws/rds/prod-migrate-manifest.yml') as manifest:
     params = yaml.load(manifest, Loader=yaml.FullLoader)
 
 # print(params)

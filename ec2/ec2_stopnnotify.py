@@ -48,8 +48,8 @@ import smtplib
 def mail_running():
     text = 'nonprod InstanceIds running: ' + instancestring
     subject = 'running instances'
-    smtp = smtplib.SMTP('sambasafety-com.mail.protection.outlook.com', 25)
-    sender = 'noreply@ssawsnv-c7n02.saprod.biz'
+    smtp = smtplib.SMTP('dig MX somecompany.com', 25)
+    sender = 'noreply@c7n02.somedomain.biz'
     receiver = ['someperson@somecompany.com', 'someperson@somecompany.com',
                 'someperson@somecompany.com', 'someperson@somecompany.com']
 
